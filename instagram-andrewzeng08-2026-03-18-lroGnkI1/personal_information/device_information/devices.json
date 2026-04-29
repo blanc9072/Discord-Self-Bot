@@ -1,0 +1,94 @@
+{
+  "devices_devices": [
+    {
+      "title": "",
+      "media_map_data": {
+        
+      },
+      "string_map_data": {
+        "Last Login": {
+          "href": "",
+          "value": "",
+          "timestamp": 1773037471
+        },
+        "User Agent": {
+          "href": "",
+          "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+          "timestamp": 0
+        }
+      }
+    },
+    {
+      "title": "",
+      "media_map_data": {
+        
+      },
+      "string_map_data": {
+        "Last Login": {
+          "href": "",
+          "value": "",
+          "timestamp": 1772337784
+        },
+        "User Agent": {
+          "href": "",
+          "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+          "timestamp": 0
+        }
+      }
+    },
+    {
+      "title": "",
+      "media_map_data": {
+        
+      },
+      "string_map_data": {
+        "Last Login": {
+          "href": "",
+          "value": "",
+          "timestamp": 1771657315
+        },
+        "User Agent": {
+          "href": "",
+          "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+          "timestamp": 0
+        }
+      }
+    },
+    {
+      "title": "",
+      "media_map_data": {
+        
+      },
+      "string_map_data": {
+        "Last Login": {
+          "href": "",
+          "value": "",
+          "timestamp": 1765477367
+        },
+        "User Agent": {
+          "href": "",
+          "value": "Instagram 409.0.0.26.161 (iPhone15,5; iOS 26_1; en_US; en; scale=3.00; 1290x2796; 838724010) AppleWebKit/420+",
+          "timestamp": 0
+        }
+      }
+    },
+    {
+      "title": "",
+      "media_map_data": {
+        
+      },
+      "string_map_data": {
+        "Last Login": {
+          "href": "",
+          "value": "",
+          "timestamp": 1760585104
+        },
+        "User Agent": {
+          "href": "",
+          "value": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1",
+          "timestamp": 0
+        }
+      }
+    }
+  ]
+}

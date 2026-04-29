@@ -1,0 +1,50 @@
+{
+  "media": [
+    
+  ],
+  "label_values": [
+    {
+      "label": "Locations of interest",
+      "vec": [
+        {
+          "value": "San Jose, California"
+        },
+        {
+          "value": "Hayward, California"
+        },
+        {
+          "value": "Los Gatos, California"
+        },
+        {
+          "value": "Los Angeles, California"
+        },
+        {
+          "value": "Luhansk, Luhansk Oblast"
+        },
+        {
+          "value": "Suzhou, Jiangsu"
+        },
+        {
+          "value": "California"
+        },
+        {
+          "value": "Nevada"
+        },
+        {
+          "value": "Colorado"
+        },
+        {
+          "value": "Luhansk Oblast"
+        },
+        {
+          "value": "Jiangsu"
+        }
+      ]
+    },
+    {
+      "label": "Usage explanation",
+      "value": "Locations of interest are used to personalize your experience on Instagram and show you more relevant ads. Learn more about how Instagram uses location in Privacy Center."
+    }
+  ],
+  "fbid": "17841470522160330"
+}

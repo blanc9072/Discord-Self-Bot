@@ -1,0 +1,22 @@
+{
+  "settings_upgraded_to_cross_app_messaging": [
+    {
+      "title": "",
+      "media_map_data": {
+        
+      },
+      "string_map_data": {
+        "Upgraded To Cross-App Messaging": {
+          "href": "",
+          "value": "False",
+          "timestamp": 0
+        },
+        "Time Upgraded": {
+          "href": "",
+          "value": "",
+          "timestamp": 0
+        }
+      }
+    }
+  ]
+}
