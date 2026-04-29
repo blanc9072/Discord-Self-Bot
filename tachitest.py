@@ -1,4 +1,5 @@
 from collections import deque
+from dataclasses import dataclass
 import os
 import asyncio
 import logging
@@ -31,6 +32,32 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 log = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Working memory (session-only, resets on restart)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class WorkingMemory:
+    location: str = "unknown"
+    activity: str = "unknown"
+    mood: str = "unknown"
+
+    def to_prompt_block(self) -> str:
+        return (
+            "[Right Now — ground yourself in this before responding]\n"
+            f"  where    : {self.location}\n"
+            f"  what     : {self.activity}\n"
+            f"  vibe     : {self.mood}"
+        )
+
+    def update(self, location: str, activity: str, mood: str) -> None:
+        # Only overwrite a field if the new value is actually known
+        if location and location.lower() != "unknown": self.location = location
+        if activity and activity.lower() != "unknown": self.activity = activity
+        if mood     and mood.lower()     != "unknown": self.mood     = mood
+
+working_memory = WorkingMemory()
 
 # ---------------------------------------------------------------------------
 # Memory helpers
@@ -93,15 +120,41 @@ andrew: what are we doing tonight
 you: idk probably just ordering food and sleeping, im so tired
 """
 
+# Long-term memory is injected as identity/behavioral conditioning, not a fact list.
+# This framing tells the model to *embody* the history rather than just recall it.
+LONG_TERM_MEMORY_TEMPLATE = (
+    "[Who You Are — let this shape how you speak, react, and feel]\n"
+    "{long_term_memory}\n"
+    "This isn't a list of facts to recite. It's who you've become. Let it color everything."
+)
+
+# Compressor focuses only on permanent facts — transient state lives in working memory.
 COMPRESSION_PROMPT_TEMPLATE = """
-You are a long-term memory manager. Here is the existing long-term memory:
+You are a long-term memory manager for an AI companion named Pistachio.
+
+Existing long-term memory:
 {long_term_memory}
 
-Here is the newest transcript of the conversation:
+Newest conversation transcript:
 {transcript}
 
-Synthesize these two into a single, updated, concise paragraph. Focus on established permanent facts,
-new permanent events, current activities, and emotional states. Do not use AI speak.
+Synthesize these into a single updated paragraph. Include only permanent information:
+who people are, relationship history, recurring patterns, significant past events, and established personality dynamics.
+Do NOT include current location, current activity, or current mood — those are tracked separately.
+Write in plain, natural language. No AI speak. No bullet points.
+"""
+
+# Working memory extractor — strict JSON only, 3 keys, "unknown" as fallback.
+WORKING_MEMORY_PROMPT_TEMPLATE = """
+Read this chat transcript and extract the current context as JSON with exactly these three keys:
+  "location" : where the people physically are right now (e.g. "apartment", "library", "out at dinner"). Use "unknown" if not mentioned.
+  "activity" : what they are currently doing (e.g. "gaming", "studying", "eating", "winding down"). Use "unknown" if not clear.
+  "mood"     : the emotional tone of the conversation (e.g. "relaxed", "playful", "stressed", "romantic"). Use "unknown" if unclear.
+
+Respond with ONLY a valid JSON object. No explanation, no markdown fences, no extra keys.
+
+Transcript:
+{transcript}
 """
 
 # ---------------------------------------------------------------------------
@@ -140,17 +193,23 @@ SAFETY_SETTINGS = [
 
 def build_dynamic_prompt() -> str:
     live_datetime = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p Pacific Time")
+    ltm_block = (
+        LONG_TERM_MEMORY_TEMPLATE.format(long_term_memory=long_term_memory)
+        if long_term_memory
+        else "[No long-term memory yet — this is the beginning.]"
+    )
     return (
         f"{SYSTEM_PROMPT}\n\n"
-        f"[OOC System Note: The current real-world date and time is {live_datetime}. "
-        f"STRICT RULE: ONLY mention the date or time if a user explicitly asks for it.]\n\n"
-        f"[System Note - Long Term Memory of this chat: {long_term_memory}]"
+        f"[OOC: Current date/time is {live_datetime}. "
+        f"STRICT RULE: Only mention date or time if explicitly asked.]\n\n"
+        f"{ltm_block}\n\n"
+        f"{working_memory.to_prompt_block()}"
     )
+
 
 def format_user_message(message: discord.Message) -> str:
     """Build the tagged message string that goes into chat history."""
     raw = message.content or "[attachment]"
-    # Strip any role-play prefixes users might inject (e.g. "Andrew: ...")
     sanitized = re.sub(r"(?i)(andrew|blanc|blanc\.ai|pistachio)\s*:", r"\1", raw)
 
     reply_tag = ""
@@ -159,6 +218,7 @@ def format_user_message(message: discord.Message) -> str:
 
     return f"[{message.author.name}]: {reply_tag}{sanitized}"
 
+
 def strip_bot_prefix(line: str) -> str:
     """Remove self-attribution prefixes the model sometimes includes."""
     lower = line.lower()
@@ -166,6 +226,7 @@ def strip_bot_prefix(line: str) -> str:
         if lower.startswith(prefix):
             return line.split(":", 1)[1].strip()
     return line
+
 
 async def compress_memory(transcript: str) -> str:
     prompt = COMPRESSION_PROMPT_TEMPLATE.format(
@@ -177,6 +238,28 @@ async def compress_memory(transcript: str) -> str:
         contents=[types.Content(role="user", parts=[types.Part.from_text(text=prompt)])],
     )
     return response.text.strip() if response.text else long_term_memory
+
+
+async def update_working_memory(recent_messages: list[types.Content]) -> None:
+    """Extract location/activity/mood from the last few messages and update working_memory in place."""
+    transcript = "\n".join(msg.parts[0].text for msg in recent_messages[-6:])
+    prompt = WORKING_MEMORY_PROMPT_TEMPLATE.format(transcript=transcript)
+    try:
+        response = await gemini_client.aio.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=[types.Content(role="user", parts=[types.Part.from_text(text=prompt)])],
+        )
+        if response.text:
+            data = json.loads(response.text.strip())
+            working_memory.update(
+                location=data.get("location", "unknown"),
+                activity=data.get("activity", "unknown"),
+                mood=data.get("mood", "unknown"),
+            )
+            log.debug("Working memory updated: %s", working_memory)
+    except Exception as exc:
+        log.warning("Working memory update failed (non-critical): %s", exc)
+
 
 async def maybe_compress_rolling_memory() -> None:
     """If the deque is full, compress and evict the oldest 15 messages."""
@@ -198,6 +281,7 @@ async def maybe_compress_rolling_memory() -> None:
         for msg in reversed(old_messages):
             chat_session.appendleft(msg)
 
+
 async def handle_sleep_command(message: discord.Message) -> None:
     """Compress current session into long-term memory and shut down."""
     global long_term_memory
@@ -216,6 +300,7 @@ async def handle_sleep_command(message: discord.Message) -> None:
             log.error("Sleep save failed: %s", exc)
 
     await client.close()
+
 
 async def generate_reply() -> str | None:
     """Call the Gemini API and return the raw reply text, or None if blocked."""
@@ -240,6 +325,7 @@ async def generate_reply() -> str | None:
 
     return response.text.strip() if response.text else None
 
+
 async def send_reply_lines(message: discord.Message, reply: str) -> None:
     """Split the reply on newlines and send each line with a typing delay."""
     lines = [strip_bot_prefix(line) for line in reply.split("\n") if line.strip()]
@@ -255,6 +341,7 @@ async def send_reply_lines(message: discord.Message, reply: str) -> None:
 # ---------------------------------------------------------------------------
 
 client = discord.Client()
+
 
 @client.event
 async def on_ready() -> None:
@@ -303,11 +390,13 @@ async def on_message(message: discord.Message) -> None:
                     types.Content(role="model", parts=[types.Part.from_text(text=reply)])
                 )
                 await send_reply_lines(message, reply)
+                # Fire working memory update in background — doesn't block the reply
+                asyncio.create_task(update_working_memory(list(chat_session)))
 
         except asyncio.TimeoutError:
             log.error("Gemini API timed out after 30 seconds.")
             if chat_session:
-                chat_session.pop()  # Remove the unanswered user message
+                chat_session.pop()
         except Exception as exc:
             log.error("Generation error: %s", exc)
 
