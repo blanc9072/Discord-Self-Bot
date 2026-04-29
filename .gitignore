@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+google-key.json
+tachi_memory.json
+__pycache__/
