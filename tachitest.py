@@ -359,7 +359,10 @@ async def on_message(message: discord.Message) -> None:
     # Handle slash commands
     if message.content.startswith("/"):
         if message.content.lower() == "/sleep":
-            await handle_sleep_command(message)
+            if message.author.name != "blanc2":
+                return
+            else: 
+                await handle_sleep_command(message)
         return
 
     # Only respond when mentioned or when Andrew speaks
