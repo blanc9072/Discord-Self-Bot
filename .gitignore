@@ -220,3 +220,6 @@ __marimo__/
 google-key.json
 tachi_memory.json
 __pycache__/
+
+instagram-*/
+.DS_Store
