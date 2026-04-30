@@ -218,7 +218,6 @@ __marimo__/
 .streamlit/secrets.toml
 
 google-key.json
-tachi_memory.json
 __pycache__/
 
 instagram-*/
