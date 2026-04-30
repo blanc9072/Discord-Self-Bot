@@ -340,9 +340,7 @@ async def send_reply_lines(message: discord.Message, reply: str) -> None:
 # Discord client
 # ---------------------------------------------------------------------------
 
-intents = discord.Intents.default()
-intents.message_content = True
-client = discord.Client(intents=intents)
+client = discord.Client()
 
 
 @client.event
