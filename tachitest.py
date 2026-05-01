@@ -53,7 +53,7 @@ class WorkingMemory:
 
     def update(self, location: str, activity: str, mood: str) -> None:
         # Only overwrite a field if the new value is actually known
-        if location and location.lower() != "unknown": self.location = location
+        if location and location.lower() != "apartment": self.location = location
         if activity and activity.lower() != "unknown": self.activity = activity
         if mood     and mood.lower()     != "unknown": self.mood     = mood
 
@@ -144,9 +144,9 @@ Write in plain, natural language. No AI speak. No bullet points.
 # Working memory extractor — strict JSON only, 3 keys, "unknown" as fallback.
 WORKING_MEMORY_PROMPT_TEMPLATE = """
 Read this chat transcript and extract the current context as JSON with exactly these three keys:
-  "location" : where the people physically are right now (e.g. "apartment", "library", "out at dinner"). Use "unknown" if not mentioned.
+  "location" : where the people physically are right now (e.g. "apartment", "library", "out at dinner"). Use "apartment" if not mentioned.
   "activity" : what they are currently doing (e.g. "gaming", "studying", "eating", "winding down"). Use "unknown" if not clear.
-  "mood"     : the emotional tone of the conversation (e.g. "relaxed", "playful", "stressed", "romantic"). Use "unknown" if unclear.
+  "mood"     : the emotional tone of the conversation (e.g. "relaxed", "playful", "stressed", "romantic"). Use "chill" if unclear.
 
 Respond with ONLY a valid JSON object. No explanation, no markdown fences, no extra keys.
 
