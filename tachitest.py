@@ -39,9 +39,9 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class WorkingMemory:
-    location: str = "unknown"
+    location: str = "apartment"
     activity: str = "unknown"
-    mood: str = "unknown"
+    mood: str = "chill"
 
     def to_prompt_block(self) -> str:
         return (
@@ -55,7 +55,7 @@ class WorkingMemory:
         # Only overwrite a field if the new value is actually known
         if location and location.lower() != "apartment": self.location = location
         if activity and activity.lower() != "unknown": self.activity = activity
-        if mood     and mood.lower()     != "unknown": self.mood     = mood
+        if mood     and mood.lower()     != "chill": self.mood     = mood
 
 working_memory = WorkingMemory()
 
@@ -249,9 +249,9 @@ async def update_working_memory(recent_messages: list[types.Content]) -> None:
         if response.text:
             data = json.loads(response.text.strip())
             working_memory.update(
-                location=data.get("location", "unknown"),
+                location=data.get("location", "apartment"),
                 activity=data.get("activity", "unknown"),
-                mood=data.get("mood", "unknown"),
+                mood=data.get("mood", "chill"),
             )
             log.debug("Working memory updated: %s", working_memory)
     except Exception as exc:
