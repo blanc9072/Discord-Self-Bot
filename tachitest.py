@@ -140,6 +140,7 @@ Synthesize these into a single updated paragraph. Include only permanent informa
 who people are, relationship history, recurring patterns, significant past events, and established personality dynamics.
 Do NOT include current location, current activity, or current mood — those are tracked separately.
 Write in plain, natural language. No AI speak. No bullet points.
+Keep the paragraph under 500 words.
 """
 
 # Working memory extractor — strict JSON only, 3 keys, "unknown" as fallback.
