@@ -22,6 +22,8 @@ GEMINI_MODEL = "projects/andrewgpt-490605/locations/us-west1/endpoints/920094419
 TRIGGER_WORDS = ["pistachio", "tachi"]
 ANDREWS_USERNAME = "blanc2"
 
+BLACKLISTED_USERS = {"notafrogo", "ssnekko"}
+
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -353,6 +355,9 @@ async def on_message(message: discord.Message) -> None:
 
     # Ignore self and wrong channel
     if message.author == client.user or message.channel.id != TARGET_CHANNEL_ID:
+        return
+    
+    if message.author.name in BLACKLISTED_USERS:
         return
 
     # Handle slash commands
