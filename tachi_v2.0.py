@@ -17,7 +17,7 @@ import json
 
 TARGET_CHANNEL_ID = 1311933748438237185
 TEMPERATURE = 1.5
-MEMORY_FILE = "test_memory.json"
+MEMORY_FILE = "tachi_memory_test.json"
 GEMINI_MODEL = "projects/andrewgpt-490605/locations/us-west1/endpoints/9200944198671400960"
 DEBOUNCE_SECONDS = 4
 TRIGGER_WORDS = ("pistachio", "tachi", "girlie")
