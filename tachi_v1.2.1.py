@@ -1,5 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
+from pathlib import Path
 import os
 import asyncio
 import logging
@@ -15,9 +16,11 @@ import json
 # Config
 # ---------------------------------------------------------------------------
 
+BASE_DIR = Path(__file__).resolve().parent
 TARGET_CHANNEL_ID = 1311933748438237185
 TEMPERATURE = 1.5
-MEMORY_FILE = "tachi_memory_test.json"
+MEMORY_FILE = BASE_DIR / "tachi_memory_test.json"
+GOOGLE_CREDENTIALS_FILE = BASE_DIR / "google-key.json"
 GEMINI_MODEL = "projects/andrewgpt-490605/locations/us-west1/endpoints/9200944198671400960"
 DEBOUNCE_SECONDS = 4
 TRIGGER_WORDS = ("pistachio", "tachi", "girlie")
@@ -85,18 +88,18 @@ working_memory = WorkingMemory()
 # ---------------------------------------------------------------------------
 
 def load_memory(channel_id: int) -> str:
-    if os.path.exists(MEMORY_FILE):
-        with open(MEMORY_FILE, "r") as f:
+    if MEMORY_FILE.exists():
+        with MEMORY_FILE.open("r", encoding="utf-8") as f:
             return json.load(f).get(str(channel_id), "")
     return ""
 
 def save_memory(channel_id: int, summary: str) -> None:
     data: dict = {}
-    if os.path.exists(MEMORY_FILE):
-        with open(MEMORY_FILE, "r") as f:
+    if MEMORY_FILE.exists():
+        with MEMORY_FILE.open("r", encoding="utf-8") as f:
             data = json.load(f)
     data[str(channel_id)] = summary
-    with open(MEMORY_FILE, "w") as f:
+    with MEMORY_FILE.open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
 # ---------------------------------------------------------------------------
@@ -243,7 +246,7 @@ last_observed_message_id: int | None = None
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(GOOGLE_CREDENTIALS_FILE)
 
 gemini_client = genai.Client(
     vertexai=True,
