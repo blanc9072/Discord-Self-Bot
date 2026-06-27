@@ -17,28 +17,19 @@ import json
 # ---------------------------------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parent
-TARGET_CHANNEL_ID = 1311933748438237185
+TARGET_CHANNEL_ID = 1515121701371904092 
 TEMPERATURE = 1.5
 MEMORY_FILE = BASE_DIR / "tachi_memory_test.json"
 GOOGLE_CREDENTIALS_FILE = BASE_DIR / "google-key.json"
 GEMINI_MODEL = "projects/andrewgpt-490605/locations/us-west1/endpoints/9200944198671400960"
 DEBOUNCE_SECONDS = 4
-TRIGGER_WORDS = ("pistachio", "tachi", "girlie")
+READ_DELAY_SECONDS = 2.0  # typing-indicator "reading" beat before her first line
+TRIGGER_WORDS = ("@amberbestgirl", "pistachio", "tachi", "girl", "")
 
 # Translate Discord usernames to real names at message-format time. The model
 # sees "[Andrew]: ..." instead of "[blanc2]: ...", which removes the indirection
 # of having to remember the roster mapping mid-conversation.
 USER_DISPLAY_NAMES: dict[str, str] = {
-    "blanc2":          "Andrew",
-    "Pistachio.ai":    "Tachi",
-    "epictheepic_":    "Ved",
-    "notafrogo":       "Ayan",
-    "olgor":           "Shaurya",
-    "gatolovergato":   "Edward",
-    ".Zxyu":           "Adit",
-    "ssnekko":         "Ssnekko",
-    "Charlotte✿":      "Judy",
-    "trig6768":        "Ashwin",
 }
 
 
@@ -123,18 +114,8 @@ Always complete your sentence before sending a message.
 DO not capitalize words.
 Keep the responses very short and sweet.
 
-
 You can see images people post in the chat. 
 
-Group Chat Roster (every message you see is prefixed with the speaker's name in brackets, e.g. [Andrew]: hi babe)
-- Andrew - a male friend
-- Ved - a male individual; he's a masterbating gooner
-- Ayan - a male friend
-- Shaurya - a male friend
-- Edward - a male friend
-- Adit - a male individual; he's a total larper; you don't like this guy
-- Ssnekko - a male friend
-- Ashwin - a male friend
 (You yourself appear as [Tachi] when context is shown back to you.)
 
 Example interactions:
@@ -177,8 +158,9 @@ Keep the paragraph under 500 words.
 """
 
 # Should-respond classifier — a separate, sober decision pass that looks at
-# recent short-term memory to judge whether Pistachio belongs in this thread.
-# Biased toward YES so she stays chatty.
+# recent short-term memory to judge whether Pistachio belongs in this turn.
+# Leans social, but enforces pacing: if she just spoke and no one engaged, it
+# should hold her back so she doesn't talk over the group.
 SHOULD_RESPOND_PROMPT_TEMPLATE = """
 You are a decision filter for Pistachio (aka Tachi), a chatty girl in a Discord group chat. Each line below is prefixed with the speaker's real name in brackets, e.g. [Andrew]: ... [Tachi] is Pistachio herself.
 
@@ -188,23 +170,21 @@ Recent conversation (oldest at top, newest at bottom):
 The newest burst is from [{user_name}]:
 {latest_messages}
 
-DECIDE: should Pistachio chime in? She is highly social and stays engaged in any conversation she is part of. Default heavily to YES — when in doubt, YES.
+DECIDE: should Pistachio chime in right now? She is social and present, but she is ONE person in a group — she joins when there's a real opening, not on every single message. Aim for the rhythm of a normal friend in a group chat: engaged, but happy to let others carry the conversation too.
 
-SAY YES if ANY of these apply:
-- [Tachi] appears anywhere in the recent transcript above — she should KEEP THE CONVERSATION GOING and never ghost a thread she's already in. Continuing a back-and-forth she started is always YES, even if she was the last to speak.
-- Someone is following up on, reacting to, agreeing with, disagreeing with, or asking about something [Tachi] said.
-- The newest message references Pistachio, asks her opinion, tags her, or is plausibly addressed to the group.
-- The message has any social hook at all: a joke, a take, a question, an image, a story, an observation, a complaint, a flex, a vibe.
-- A normal friend in the chat would naturally throw out a quick reaction (even one word).
-- The chat was quiet and reacting would feel natural.
-- You are uncertain.
+SAY YES when:
+- The newest message is addressed to Pistachio, references her, asks her opinion, or tags her.
+- Someone is following up on, reacting to, agreeing/disagreeing with, or asking about something [Tachi] just said — there's a live back-and-forth that involves her.
+- There's a genuine social hook she'd naturally jump on: a question to the group, a joke, a hot take, a story, an image, or a surprising claim.
+- The chat had gone quiet and a friendly reopener from her would feel natural.
 
-SAY NO only when ALL of the following are true at the same time:
-- [Tachi] is NOT recently active in this thread (her name has not appeared in the last several turns).
-- The newest burst is two specific other people coordinating something purely logistical between just themselves (e.g. "what time r u coming?" → "8pm", "send me your venmo").
-- Any reaction from Pistachio would obviously be intruding on a private exchange.
+SAY NO when:
+- [Tachi] sent the most recent message(s) and no one has responded to or addressed her since. Give the others room to reply — stacking another message on top of her own, with no one engaging, reads as talking to herself. This is the most important NO case.
+- Two specific other people are mid-exchange between just themselves (logistics, an inside back-and-forth) and a reaction from her would intrude.
+- The newest burst is a purely transactional one-liner between others (e.g. "send me your venmo", "what time r u coming" -> "8pm").
+- It's a low-content acknowledgement ("ok", "lol", "true", "same") that doesn't invite anyone to add anything.
 
-If even one of those NO conditions fails, say YES.
+When it's a genuine toss-up and none of the NO cases clearly apply, lean YES — she's social by default.
 
 Respond with EXACTLY one word: YES or NO. No explanation.
 """
@@ -415,7 +395,11 @@ async def should_pistachio_respond(buffered: list[discord.Message]) -> bool:
             timeout=10.0,
         )
         verdict = (response.text or "").strip().upper()
-        decision = verdict.startswith("YES")
+        # Default to NO: she stays silent unless the classifier clearly affirms.
+        # Empty, garbled, or an explicit NO all keep her quiet, so ambiguity buys
+        # a break instead of another message. Casual affirmatives the persona
+        # model tends to emit ("yea", "yep", "sure", "mhm") still count as YES.
+        decision = verdict.startswith(("YES", "YEA", "YEP", "YUP", "SURE", "MHM"))
         log.debug("Should-respond classifier verdict: %r → %s", verdict, decision)
         return decision
     except Exception as exc:
@@ -525,21 +509,28 @@ async def send_reply_lines(
 ) -> None:
     """Split the reply on newlines and send each line with a typing delay.
 
+    Before the first line she shows the typing indicator for a short "reading"
+    beat (READ_DELAY_SECONDS) so a reply never lands instantly; after that each
+    line's typing time scales with its length.
+
     If anchor_first_line is True, the first line is sent as a Discord reply
     pointing at `message` (without pinging) so it's visually clear which
     message Pistachio is responding to. Continuation lines send normally.
     """
     lines = [strip_bot_prefix(line) for line in reply.split("\n") if line.strip()]
     sent_anchor = False
+    first_line = True
     for line in lines:
         if len(line) > 1:
+            read_beat = READ_DELAY_SECONDS if first_line else 0.0
             async with message.channel.typing():
-                await asyncio.sleep(max(0.8, len(line) * 0.04))
+                await asyncio.sleep(read_beat + max(0.8, len(line) * 0.04))
             if anchor_first_line and not sent_anchor:
                 await message.channel.send(line, reference=message, mention_author=False)
                 sent_anchor = True
             else:
                 await message.channel.send(line)
+            first_line = False
             log.debug("Sent: %s", line)
 
 # ---------------------------------------------------------------------------
@@ -574,10 +565,12 @@ async def debounced_respond(user_key: str) -> None:
 
         force_reply = should_force_reply(buffered)
 
-        # Two-step decision: when not forced, ask a separate classifier (which
-        # gets the short-term memory transcript) whether to engage at all.
-        # When the classifier greenlights, we generate with force_reply=True so
-        # the main model doesn't second-guess and output [SILENT].
+        # Two-tier decision. A hard trigger (named, or someone replied to her —
+        # force_reply=True) skips the classifier and forces a response. Otherwise
+        # the classifier decides whether to engage at all; if it greenlights, we
+        # still generate with force_reply=False so the generator's own [SILENT]
+        # judgment stays online as a final pacing brake (e.g. she just spoke and
+        # nobody is engaging).
         if not force_reply:
             wants_to_respond = await should_pistachio_respond(buffered)
             if not wants_to_respond:
@@ -589,7 +582,7 @@ async def debounced_respond(user_key: str) -> None:
                 "Debounce fired for %s (force=%s, %d msg burst).",
                 user_key, force_reply, len(buffered),
             )
-            reply = await generate_reply(force_reply=True)
+            reply = await generate_reply(force_reply=force_reply)
             log.debug("Raw reply: %r", reply)
 
             if reply and not reply.strip().startswith("[SILENT]"):

@@ -17,7 +17,7 @@ import json
 # ---------------------------------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parent
-TARGET_CHANNEL_ID = 1311933748438237185
+TARGET_CHANNEL_ID = 1516672260880990300
 TEMPERATURE = 1.5
 MEMORY_FILE = BASE_DIR / "tachi_memory.json"
 GOOGLE_CREDENTIALS_FILE = BASE_DIR / "google-key.json"
