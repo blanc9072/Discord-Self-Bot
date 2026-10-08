@@ -1,24 +1,3 @@
-"""
-Anti_Leave.py — mutual re-invite guard for the Pistachio and Blanc accounts.
-
-Both accounts live in the same Discord group chat. This script logs both in at
-once and continuously checks the group's recipient list. If one of them leaves
-or gets kicked, the other adds them straight back:
-
-    Blanc leaves/kicked      -> Pistachio re-adds Blanc
-    Pistachio leaves/kicked  -> Blanc re-adds Pistachio
-
-Notes
-- Re-adds are event-driven (on_group_remove) for near-instant recovery, with a
-  short poll as a safety net that also handles a partner who left before startup.
-- Coverage is mutual, but each account can only re-add the *other* one: a client
-  that has itself been removed can no longer see the group, so it can't act. The
-  only real gap is both accounts being removed at the exact same instant.
-- Re-adding someone to a group DM requires the two accounts to be friends.
-- This drives user accounts (the same ones the persona bots use), so it talks to
-  the group-DM recipient endpoints via add_recipients.
-"""
-
 from __future__ import annotations
 
 import os
